@@ -1,0 +1,641 @@
+---
+title: "Untitled"
+author: "Jacob Hillman"
+date: "2025-06-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#######################################
+# Load the packages and read the data #
+#######################################
+
+#rm(list=ls()) # Clear objects in the working space.
+par.original <- par(no.readonly=TRUE); # Remember the orginal plotting parameters.
+
+library(survival)
+library(cluster)
+library(protoclust)
+library("readxl")
+
+
+#source("C:/Users/wangh/OneDrive/Works/USU Internship/2022-05 Lymphoma 3/functions.R")
+
+source("functions.R") # already put it in current working directory
+
+#setwd("C:/Users/wangh/OneDrive/Works/USU Internship/2021-06 Lymphoma 2/gehan_minimax")
+```
+
+
+```{r}
+rawdata<-read.csv("kidney_all_vbl.csv")
+```
+
+
+```{r}
+rawdata<-read.csv("kidney_all_vbl.csv")
+
+names(rawdata)<-c("id","time","delta","age","sex","race","site","site2","H","H_C","H_BG","year","6T","6N","6M","7T","7N","7M","8T","8N","8M","CSE","6S","7S","SSF1","SSF2","SSF3","SSF4","SSF5","8S","Sarco")
+
+rawdata<-rawdata[rawdata$year>=2010 & rawdata$year<=2017,]
+```
+
+
+```{r}
+data<-rawdata
+```
+
+```{r}
+pacman::p_load(tidyverse)
+```
+
+```{r}
+unique(data$"6T")
+```
+
+```{r}
+unique(data$"7T")
+```
+```{r}
+unique(data$"8T")
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+# creating T variable
+data_T<-data%>%
+  mutate(
+     T= case_when(
+       `8T`=="T1a"~"T1",
+       `8T`=="T1b"~"T1",
+       `8T`=="T1"~"T1",
+       `8T`=="T2a"~"T2",
+       `8T`=="T2b"~"T2",
+       `8T`=="T2"~"T2",
+       `8T`=="T3a"~"T3",
+       `8T`=="T3b"~"T3",
+       `8T`=="T3c"~"T3",
+       `8T`=="T3"~"T3",
+       `8T`=="T4"~"T4",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T1a"~"T1",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T1b"~"T1",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T1"~"T1",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T1NOS"~"T1",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T2a"~"T2",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T2b"~"T2",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T2"~"T2",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T2NOS"~"T2",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3a"~"T3",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3b"~"T3",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3c"~"T3",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3"~"T3",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3NOS"~"T3",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T4"~"T4",
+       !(`8T`%in% c("T1a","T1b","T2a","T2b","T3a","T3b","T3c","T4","T1","T2","T3")) & `7T` == "T3"~"T3",
+      
+      
+     )      )
+
+table(data_T$T)
+```
+
+
+
+```{r}
+# checking that every value of 6T has a corresponding value of 7T
+data_filt<-data%>%
+  filter(data$`7T`=="Blank(s)" & data$`6T` != "Blank(s)")
+```
+
+
+```{r}
+data_filt2<-data%>%
+  filter(data$`7N`=="Blank(s)" & data$`6N` != "Blank(s)")
+```
+
+```{r}
+data_filt3<-data%>%
+  filter(data$`7M`=="Blank(s)" & data$`6M` != "Blank(s)")
+```
+
+
+```{r}
+table(data$`7N`)
+```
+
+```{r}
+# Only N0 and N1 are valid N-values in AJCC 7th or 8th edition
+table(data$`8N`)
+```
+
+
+
+```{r}
+# creating N variable
+
+data_TN<-data_T%>%
+  mutate(
+     N= case_when(
+       `8N`=="N1"~"N1",
+       `8N`=="N0"~"N0",
+       !(`8N` %in% c("N1","N0")) & `7N`=="N1"~"N1",
+       !(`8N` %in% c("N1","N0")) & `7N`=="N0"~"N0"
+     )
+     
+  )
+table(data_TN$`N`)
+```
+
+```{r}
+print(table(data$`7M`))
+print(table(data$`8M`))
+```
+
+
+```{r}
+#creating M variable
+
+data_TNM = data_TN%>%
+  mutate( 
+    M= case_when(
+      `8M`=="M1"~"M1",
+       `8M`=="M0"~"M0",
+       !(`8M` %in% c("M1","M0")) & `7M`=="M1"~"M1",
+       !(`8M` %in% c("M1","M0")) & `7M`=="M0"~"M0"
+    )
+  )
+print(table(data_TNM$`M`))
+```
+
+
+```{r}
+table(data$"Sarco")
+```
+
+
+```{r}
+choose_time<-function(data_TNM){
+  newdata<-data_TNM[data_TNM$time!= "Unknown",]
+  return(newdata)}
+data_TNM<-choose_time(data_TNM)
+
+nrow(data_TNM)
+```
+
+```{r}
+#
+print(unique(data_TNM$delta))
+
+data_TNM<-data_TNM%>%
+  mutate(delta = case_when(
+    delta == "Alive or dead of other cause"~"0",
+    delta == "Dead (attributable to this cancer dx)"~"1" ) )%>%
+  filter(delta %in% c("0","1"))
+print(unique(data_TNM$delta))
+nrow(data_TNM)
+           
+```
+
+```{r}
+
+```
+
+
+
+
+```{r}
+# Choose for "T"
+choose_T<-function(data_TNM){
+  newdata<- data_TNM[data_TNM$T%in%c("T1",
+                             "T2",
+                             "T3",
+                             "T4"
+                             )  ,]
+  return(newdata)}
+data_TNM<-choose_T(data_TNM)
+table(data_TNM$T)
+```
+
+```{r}
+data_TNM$T<-factor(data_TNM$T,levels=c("T1",
+                               "T2",
+                               "T3",
+                               "T4"))
+
+table(data_TNM$T)
+```
+
+
+```{r}
+# Choose for "N"
+choose_N<-function(data_TNM){
+  newdata<- data_TNM[data_TNM$N%in%c("N0",
+                             "N1"
+                             
+                             )  ,]
+  return(newdata)}
+data_TNM<-choose_N(data_TNM)
+table(data_TNM$N)
+```
+
+```{r}
+data_TNM$N<-factor(data_TNM$N,levels=c("N0",
+                               "N1"
+                               ))
+
+table(data_TNM$N)
+```
+
+```{r}
+# Choose for "M"
+choose_M<-function(data_TNM){
+  newdata<- data_TNM[data_TNM$M%in%c("M0",
+                             "M1"
+                             
+                             )  ,]
+  return(newdata)}
+data_TNM<-choose_M(data_TNM)
+table(data_TNM$M)
+```
+
+```{r}
+data_TNM$M<-factor(data_TNM$M,levels=c("M0",
+                               "M1"
+                               ))
+
+table(data_TNM$M)
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+```{r}
+table(data_TNM$T)
+table(data_TNM$N)
+table(data_TNM$M)
+table(data_TNM$S)
+
+```
+
+```{r}
+round(100*table(data_TNM$S)/nrow(data_TNM),1)
+round(100*table(data_TNM$T)/nrow(data_TNM),1)
+round(100*table(data_TNM$N)/nrow(data_TNM),1)
+round(100*table(data_TNM$M)/nrow(data_TNM),1)
+
+```
+
+
+```{r}
+########################################################
+#################    Don't Change   ######################
+vars<-c("T","N","M")   # Construct a vector "vars" that contains the name of the factors we are interested in. The names must be exact the same as the factor names in the inputted data.
+##############################################################
+#############################################################
+```
+
+```{r}
+elimSize<-25  # set a number "elimSize" so that any combination with size < "elimSize" will be eliminated.
+
+displayFinalKM<-1 # 1--display survival curves of "boxes"; 0--don't display
+#w<-120 # Set the study time by months
+
+varIndex=match(vars,names(data_TNM)) #Find the index of positions of variables
+numVar<-length(varIndex) #Count the number of variables
+```
+
+```{r}
+mydata=cbind.data.frame(data_TNM[,varIndex],time=data_TNM$time,delta=data_TNM$delta)  # Keep only "time", "delta" and interested factors.
+```
+
+```{r}
+data=data_TNM
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+# "Count" is a variable that counts number of observation for each combination.
+
+#314391
+```
+
+```{r}
+######################
+# Set the parameters #
+######################
+
+linkage<-"minimax" # Choose a linkage method
+#vars<-c("S","I","T","A","X")    # Construct a vector "vars" that contains the name of the factors we are interested in. The names must be exact the same as the factor names in the inputted data.
+vars<-c("T","N","M")    # Construct a vector "vars" that contains the name of the factors we are interested in. The names must be exact the same as the factor names in the inputted data.
+
+
+elimSize<-0  # set a number "elimSize" so that any combination with size < "elimSize" will be eliminated.
+finalGroups<-0 # Set the number of clusters in the final results (1 < "finalGroups" < total number of combinations (with size smaller than "elimSize") ) If 0 is input, then the number of groups will be decided by C-index
+displayFinalKM<-1 # 1--display survival curves of "boxes"; 0--don't display
+w<-60 # Set the study time by months
+#w<-max(mydata$time)
+
+varIndex=match(vars,names(data)) #Find the index of positions of variables
+numVar<-length(varIndex) #Count the number of variables
+
+
+
+```
+
+```{r}
+print(varIndex)
+ncol(data_TNM)
+names(data_TNM)[32:34]
+
+```
+
+```{r}
+  # Keep only "time", "delta" and interested factors.
+mydata=cbind.data.frame(data[,varIndex],time=data$time,delta=data$delta)  
+# Add a column "comb" to "mydata" to indicate the combinations (the reason of using if-else syntax is that "paste" function has to be used with at least two variables.)
+if(numVar==1){
+  comb<-data[vars]
+  mydata<-cbind.data.frame(mydata,comb)
+  colnames(mydata)[1]<-"comb"
+}else{
+  mydata$comb<-apply(data_TNM[,varIndex],1,paste,collapse="") 
+}
+
+
+mydata<-cbind(H=data$H,mydata) # when and if I add age, add argument data$A here
+
+# "Count" is a variable that counts number of observation for each combination.
+Count<-aggregate(count ~ comb, cbind(count=1,mydata),length)
+
+# Names of Combinations with size > elimSize will be recorded in the variable "restcomb"
+restcomb<-Count[Count$count>=elimSize,]$comb
+
+# Count how many different combinations left.
+numComb<-length(restcomb)
+
+# Construct a "testdata" that only keeps combinations in "restcomb"
+testdata=mydata[mydata$comb %in% restcomb,]
+
+# Add a column "comb_int" to represent the index of "comb" in the "restcomb" for each observation (in alphabeta order).
+testdata$comb_ind<-as.integer(factor(testdata$comb))
+
+nrow(testdata)
+#160083
+##################################################################################
+
+
+```
+
+```{r}
+testdata$time<-as.numeric(testdata$time)
+testdata$delta<-as.numeric(testdata$delta)
+
+```
+
+
+
+```{r}
+# create data groups for each survival curve
+
+mydata_old_stage = mydata%>%
+  mutate(old_stage = case_when(comb=="T1N0M0"~"Stage1",
+                               comb == "T2N0M0"~"Stage2",
+                               comb == "T1N1M0" | comb == "T2N1M0" | comb == "T3N0M0" | comb == "T3N1M0"~"Stage3",
+                               M == "M1" | T == "T4"~"Stage4"))
+```
+
+
+
+
+
+```{r}
+
+```
+
+```{r}
+levels(factor(mydata_old_stage$old_stage))
+legend_labs<-levels(factor(mydata_old_stage$old_stage))
+length(legend_labs)
+```
+
+
+```{r}
+mydata_old_stage$time<-as.numeric(mydata_old_stage$time)
+mydata_old_stage$delta<-as.numeric(mydata_old_stage$delta)
+
+
+
+
+grouptest<-survfit(Surv(time,delta)~old_stage, data=mydata_old_stage)
+
+plot(grouptest,ylim=c(0, 1.0),
+     
+     xlim=c(0,60),
+     xlab=("Survival Time by Months"),
+     ylab=("Proportion Surviving"),
+     cex=1,
+     cex.lab=1.5,
+     cex.axis=1.5,
+     col=c("gray50","cyan3","orange" , 6,  3, 2, 4, 9),
+     lwd=3.0,
+     lty=1,
+     mark.time=FALSE)
+title(main = "")
+legend("bottomleft",
+       legend=legend_labs,
+       col=c("gray50","cyan3","orange" , 6,  3, 2, 4, 9),
+       cex=1,
+       lty=1,
+       lwd=3.0,
+       xjust=1, yjust=1)
+
+```
+
+```{r}
+# get c-index from AJCC method being used above
+# Define a function "Esurv_c" to calculated estimated survival time.
+# Define a function "Esurv_c" to calculated estimated survival time.
+Esurv_c<-function(data,maxt){
+  surv<-KMsurv(data)
+  if(maxt<surv[nrow(surv),1]){stop("overall_maxt < maxt")}
+  Es<-surv[1,1]*1
+  if(nrow(surv)>1){
+    for(i in 1:(nrow(surv)-1)){
+      Es<-sum(Es,surv[i,2]*(surv[i+1,1]-surv[i,1]))
+    }
+  }
+  # Add the part after the last death
+  Es<-sum(Es,surv[nrow(surv),2]*(maxt-surv[nrow(surv),1]))
+  return(Es)
+}
+
+```
+
+
+```{r}
+ # Define a function C_index with an arguments "data" to calculate Harrell's C-index. "data" has 3 columns "time", "delta" and "E_T".
+  C_index<-function(data){
+    
+    # Aggregate the rows in data by adding a column "count"
+    data <- aggregate(count ~ ., cbind(count=1,data),length) 
+    
+    # Sort the data by order of time (ascending) and delta (descending)
+    ord <- order(data[,1], -data[,2]) 
+    data <- as.matrix(data[ord,])
+    
+    # Find the row positions of deaths. Minus 1 as the index of element in C starts at 0 instead of 1
+    di <- which(data[,2] == 1)-1
+    
+    library(Rcpp) # Call "Rcpp" package to use C function
+    cppFunction('NumericVector Cindex(NumericMatrix data,NumericVector di){ 
+                int nrow = data.nrow();
+                int ndi = di.size();
+                double numerator = 0;
+                double denominator = 0;
+                NumericVector out(2);
+                
+                int ii = 0;
+                int i = di[ii];
+                
+                NumericVector f(3);
+                NumericVector g(3);
+                
+                while(ii<ndi){
+                if(i==(nrow-1)){break;}
+                
+                for (int j=i+1;j<nrow;j++){
+                int count = data(i,3)*data(j,3);
+                
+                if (data(j,0) > data(i,0)) {
+                denominator += count;
+                if (data(j,2) > data(i,2))
+                {numerator += count; }
+                else if (data(j,2) == data(i,2)) 
+                {numerator += 0.5*count; }
+                
+                }else{
+                if (data(j,1)==0){
+                denominator += count;
+                if (data(j,2) > data(i,2)) {
+                numerator += count;}
+                else if (data(j,2) == data(i,2)) 
+                {numerator += 0.5*count;}
+                }
+                }
+                }
+                i = di[++ii];
+                }
+                out[0]=numerator;
+                out[1]=denominator;
+                return out;
+  }
+                ')
+    result<-Cindex(data,di)
+    return(result[[1]]/result[[2]])
+  }
+
+  
+```
+
+```{r}
+# tempassign<-as.list(unique(mydata_old_stage$old_stage)) # Starting with leaves' order in the dendrogram, construct a list "tempassign" temporarily recording combinations' order in the dendrogram
+tempassign<-as.list(1:4)
+```
+
+
+```{r}
+ # Construct Cindexdata which is used to input in function "C_index"
+    Cindexdata<-mydata_old_stage 
+    
+    # Add a column "group_ind" to record the group number for each case
+# Make sure old_stage is consistent (character, not factor)
+Cindexdata$old_stage <- as.character(Cindexdata$old_stage)
+
+# Define the unique stages and assign group numbers
+stage_levels <- sort(unique(Cindexdata$old_stage))  # Should return: "Stage1" "Stage2" ...
+stage_map <- setNames(1:length(stage_levels), stage_levels)
+
+# Convert stage labels to numeric group_ind using the map
+Cindexdata$group_ind <- stage_map[Cindexdata$old_stage]
+    
+    
+    maxt<-max(Cindexdata$time)
+    # Add a column "E_T" to record the estimated survival time for each case
+    Cindexdata$E_T<-0
+    for(k in 1:length(tempassign)){
+      group_k_data<-Cindexdata[Cindexdata$group_ind==k,c("time","delta")] # group_ind needs to be 1,2,3,or 4
+      Cindexdata$E_T[Cindexdata$group_ind==k]<-Esurv_c(group_k_data,maxt)
+    }
+    
+    Cindexdata<-Cindexdata[,c("time","delta","E_T")] # Keep only 3 columns of interest
+    
+    allC <- cbind(allC, C_index(Cindexdata)) # Record the C-index in vector "allC"
+    
+    
+    
+    C_index(Cindexdata)
+```
+```{r}
+
+```
+
+
+
+
+
+```{r}
+
+
+```
+
+```{r}
+sapply(Cindexdata, class)
+
+```
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
